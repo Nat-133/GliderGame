@@ -5,20 +5,22 @@ import { GLTFLoader } from '../Common/examples/jsm/loaders/GLTFLoader.js';
 import { PointerLockControls } from '../Common/examples/jsm/controls/PointerLockControls.js';
 
 let camera, controls, scene, renderer, canvas;
+let direction;  // normalised view direction
 let pos, vel, acc;
 
 let yawVel, pitchVel;  // in radians
 
 var origin = new THREE.Vector3(0,0,0);
-var gravity = new THREE.Vector3(0, 1, 0);
+var gravity = new THREE.Vector3(0, -1, 0);
 
 function main() {
   canvas = document.getElementById( "gl-canvas" );
   renderer = new THREE.WebGLRenderer({canvas});
   renderer.shadowMap.enabled = true;
+  direction = new THREE.Vector3(0,0,-1);
   acc = new THREE.Vector3(0, 0, 0);
-  vel = new THREE.Vector3(0, -0.5, -1);
-  pos = new THREE.Vector3(0, 10, 20);
+  vel = new THREE.Vector3(0, 0, 0);
+  pos = new THREE.Vector3(0, 25, 0);
   
   yawVel = 0;
   pitchVel = 0;
@@ -28,7 +30,7 @@ function main() {
   const near = 0.1;
   const far = 100;
   camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-  camera.position.set(0, 10, 20);
+  camera.position.set(pos.x, pos.y, pos.z);
   camera.up = new THREE.Vector3(0,1,0);
 
   
@@ -40,7 +42,7 @@ function main() {
   scene.add(camera);
 
   // draw plane
-  const planeSize = 40;
+  const planeSize = 40000;
 
   const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
   const planeMat = new THREE.MeshPhongMaterial({
@@ -73,7 +75,7 @@ function main() {
   const ExtMeshCube = new THREE.Mesh(ExtCubeGeo, ExtCubeMat);
   ExtMeshCube.receiveShadow = true;
   ExtMeshCube.position.set(0, ExtCubeSize / 2 - 0.1, 0);
-  scene.add(ExtMeshCube);
+  //scene.add(ExtMeshCube);
 
   // draw model
   const loader = new GLTFLoader();
@@ -144,27 +146,32 @@ function onWindowResize() {
 function initFlightControls(){
   document.onkeydown = function(e){
     if (e.key == "a"){
-      yawVel = -0.1;
+      yawVel = 0.05;
     }else if (e.key == "d"){
-      yawVel = 0.1;
+      yawVel = -0.05;
     }else if (e.key == "w"){
-      pitchVel = 0.1;
+      pitchVel = 0.05;
     }else if (e.key == "s"){
-      pitchVel = -0.1;
+      pitchVel = -0.05;
     }
   }
   document.onkeyup = function(e){
     if (e.key == "a" || e.key == "d"){
       yawVel = 0;
     }else if (e.key == "w" || e.key == "s"){
-      pitchVel = 0.1;
+      pitchVel = 0;
     }
   }
+  console.log("flightControls Initialised");
 }
 
 function render() {
-  //camera.lookAt( scene.position );
   
+  updateAcc();
+  updateVel();
+  updatePos();
+  updateCamera();
+  //console.log(vel.angleTo(camera.up), pos.y);
   resizeRendererToDisplaySize(renderer);
   {
     const canvas = renderer.domElement;
@@ -181,22 +188,61 @@ function component(_vec, _direction){
   var vec = _vec.clone();
   var direction = _direction.clone().normalize();
 
-  scalar = vec.dot(direction);
+  var scalar = vec.dot(direction);
   direction.multiplyScalar(scalar);
 
   return direction;
 }
 
-function calcAcceleration(){
-  return component(gravity, velocity);
+function calcDragAcc(){
+  var k = 0.5
+  var drag = vel.clone();
+  drag.multiplyScalar(-k * drag.length());
+  return drag;
+}
+
+function calcGravAcc(){
+  return component(gravity, direction);
+}
+
+function updateAcc(){
+  acc = calcGravAcc();
+  acc.add(calcDragAcc());
 }
 
 function updatePitch(){
-  
+  var angle = direction.angleTo(camera.up)
+  if (angle <= Math.PI+pitchVel && angle >= pitchVel){
+    // if rotating further won't cause the glider to go upside down
+    var axis = direction.clone();
+    axis.cross(camera.up);
+    axis.normalize();
+    direction.applyAxisAngle(axis, pitchVel);
+    vel.applyAxisAngle(axis, pitchVel);
+  }
 }
 
 function updateYaw(){
+  direction.applyAxisAngle(camera.up, yawVel);
+  vel.applyAxisAngle(camera.up, yawVel);
+}
 
+function updateVel(){
+  updatePitch();
+  updateYaw();
+  vel.add(acc);
+}
+
+function updatePos(){
+  pos.add(vel);
+
+}
+
+function updateCamera(){
+  camera.position.set(pos.x, pos.y, pos.z);
+  var look = direction.clone();
+  look.add(pos);
+  camera.lookAt(look);  
 }
 
 main();
