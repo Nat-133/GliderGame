@@ -2,14 +2,26 @@ import * as THREE from '../Common/build/three.module.js';
 import { TrackballControls } from '../Common/examples/jsm/controls/TrackballControls.js';
 
 import { GLTFLoader } from '../Common/examples/jsm/loaders/GLTFLoader.js';
+import { PointerLockControls } from '../Common/examples/jsm/controls/PointerLockControls.js';
 
 let camera, controls, scene, renderer, canvas;
+let pos, vel, acc;
 
+let yawVel, pitchVel;  // in radians
+
+var origin = new THREE.Vector3(0,0,0);
+var gravity = new THREE.Vector3(0, 1, 0);
 
 function main() {
   canvas = document.getElementById( "gl-canvas" );
   renderer = new THREE.WebGLRenderer({canvas});
   renderer.shadowMap.enabled = true;
+  acc = new THREE.Vector3(0, 0, 0);
+  vel = new THREE.Vector3(0, -0.5, -1);
+  pos = new THREE.Vector3(0, 10, 20);
+  
+  yawVel = 0;
+  pitchVel = 0;
 
   const fov = 45;
   const aspect = 2;  // the canvas default
@@ -17,139 +29,173 @@ function main() {
   const far = 100;
   camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   camera.position.set(0, 10, 20);
+  camera.up = new THREE.Vector3(0,1,0);
 
   
-  createControls( camera );
-  controls.update();
+  //createControls( camera );
+  //controls.update();
   
   scene = new THREE.Scene();
   scene.background = new THREE.Color('black');
+  scene.add(camera);
 
-  //
-    const planeSize = 40;
+  // draw plane
+  const planeSize = 40;
 
-    const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
-    const planeMat = new THREE.MeshPhongMaterial({
-      color: 0xADD8E6,
-      side: THREE.DoubleSide,
-    });
-    const PlaneMesh = new THREE.Mesh(planeGeo, planeMat);
-    PlaneMesh.receiveShadow = true;
-    PlaneMesh.rotation.x = Math.PI * -.5;
-    scene.add(PlaneMesh);
+  const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
+  const planeMat = new THREE.MeshPhongMaterial({
+    color: 0xADD8E6,
+    side: THREE.DoubleSide,
+  });
+  const PlaneMesh = new THREE.Mesh(planeGeo, planeMat);
+  PlaneMesh.receiveShadow = true;
+  PlaneMesh.rotation.x = Math.PI * -.5;
+  scene.add(PlaneMesh);
 
-   //
-     const cubeSize = 4;
-     const cubeGeo = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-     const cubeMat = new THREE.MeshPhongMaterial({color: '#8AC'});
-     const cubeMesh = new THREE.Mesh(cubeGeo, cubeMat);
-     cubeMesh.castShadow = true;
-     cubeMesh.receiveShadow = true;
-     cubeMesh.position.set(cubeSize + 1, cubeSize / 2, 0);
-     scene.add(cubeMesh);
+  // draw cube
+  const cubeSize = 4;
+  const cubeGeo = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+  const cubeMat = new THREE.MeshPhongMaterial({color: '#8AC'});
+  const cubeMesh = new THREE.Mesh(cubeGeo, cubeMat);
+  cubeMesh.castShadow = true;
+  cubeMesh.receiveShadow = true;
+  cubeMesh.position.set(cubeSize + 1, cubeSize / 2, 0);
+  scene.add(cubeMesh);
    
   
-  //
-    const ExtCubeSize = 30;
-    const ExtCubeGeo = new THREE.BoxGeometry(ExtCubeSize, ExtCubeSize, ExtCubeSize);
-    const ExtCubeMat = new THREE.MeshPhongMaterial({
-      color: '#0C0C0C',
-      side: THREE.BackSide,
+  // draw scene border
+  const ExtCubeSize = 30;
+  const ExtCubeGeo = new THREE.BoxGeometry(ExtCubeSize, ExtCubeSize, ExtCubeSize);
+  const ExtCubeMat = new THREE.MeshPhongMaterial({
+    color: '#0C0C0C',
+    side: THREE.BackSide,
+  });
+  const ExtMeshCube = new THREE.Mesh(ExtCubeGeo, ExtCubeMat);
+  ExtMeshCube.receiveShadow = true;
+  ExtMeshCube.position.set(0, ExtCubeSize / 2 - 0.1, 0);
+  scene.add(ExtMeshCube);
+
+  // draw model
+  const loader = new GLTFLoader();
+
+  loader.load( '../GlTF_Models/minion_alone.glb', function ( gltf ) {
+    gltf.scene.position.set(-6,3,-3);
+    gltf.scene.scale.set(3,3,3);
+    gltf.scene.rotation.set(0,Math.PI*(1/4),0);
+
+    var colour = new THREE.Color(0x00f000);
+    gltf.scene.traverse( function( node ){
+      if(node.isMesh){
+        var newMaterial = new THREE.MeshPhongMaterial({
+          color: colour
+        });
+        //node.material = newMaterial;
+      }
     });
-    const ExtMeshCube = new THREE.Mesh(ExtCubeGeo, ExtCubeMat);
-    ExtMeshCube.receiveShadow = true;
-    ExtMeshCube.position.set(0, ExtCubeSize / 2 - 0.1, 0);
-    scene.add(ExtMeshCube);
 
-    const loader = new GLTFLoader();
+    scene.add( gltf.scene );
+  }, undefined, function ( error ) {
 
-    loader.load( '../GlTF_Models/minion_alone.glb', function ( gltf ) {
-      gltf.scene.position.set(-6,3,-3);
-      gltf.scene.scale.set(3,3,3);
-      gltf.scene.rotation.set(0,Math.PI*(1/4),0);
+  console.error( error );
 
-      var colour = new THREE.Color(0x00f000);
-      gltf.scene.traverse( function( node ){
-        if(node.isMesh){
-          var newMaterial = new THREE.MeshPhongMaterial({
-            color: colour
-          });
-          //node.material = newMaterial;
-        }
-      });
+  } );
 
-      scene.add( gltf.scene );
-    }, undefined, function ( error ) {
+  // add ambient light
+  const ambLight = new THREE.AmbientLight( 0x404040,1.2 ); // soft white light
+  scene.add( ambLight );
 
-	  console.error( error );
 
-    } );
-  
-  
-    const ambLight = new THREE.AmbientLight( 0x404040,1.2 ); // soft white light
-    scene.add( ambLight );
+  // add point light source
+  const color = 0xFFFFFF;
+  const intensity = 1;
+  const light = new THREE.PointLight(color, intensity);
+  light.castShadow = true;
+  light.position.set(5, 10, 8);
+  scene.add(light);
 
-  
-  
-    const color = 0xFFFFFF;
-    const intensity = 1;
-    const light = new THREE.PointLight(color, intensity);
-    light.castShadow = true;
-    light.position.set(5, 10, 8);
-    scene.add(light);
+  const helper = new THREE.PointLightHelper(light);
+  scene.add(helper);
 
-    const helper = new THREE.PointLightHelper(light);
-    scene.add(helper);
-
-    requestAnimationFrame(render);
+  initFlightControls();
+  requestAnimationFrame(render);
 
 }
 
 function resizeRendererToDisplaySize(renderer) {
-    const canvas = renderer.domElement;
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-    const needResize = canvas.width !== width || canvas.height !== height;
-    if (needResize) {
-      renderer.setSize(width, height, false);
+  const canvas = renderer.domElement;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  const needResize = canvas.width !== width || canvas.height !== height;
+  if (needResize) {
+    renderer.setSize(width, height, false);
+  }
+  return needResize;
+}
+
+function onWindowResize() {
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+function initFlightControls(){
+  document.onkeydown = function(e){
+    if (e.key == "a"){
+      yawVel = -0.1;
+    }else if (e.key == "d"){
+      yawVel = 0.1;
+    }else if (e.key == "w"){
+      pitchVel = 0.1;
+    }else if (e.key == "s"){
+      pitchVel = -0.1;
     }
-    return needResize;
+  }
+  document.onkeyup = function(e){
+    if (e.key == "a" || e.key == "d"){
+      yawVel = 0;
+    }else if (e.key == "w" || e.key == "s"){
+      pitchVel = 0.1;
+    }
+  }
 }
 
 function render() {
+  //camera.lookAt( scene.position );
+  
+  resizeRendererToDisplaySize(renderer);
+  {
+    const canvas = renderer.domElement;
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+  
+  renderer.render(scene, camera);
 
-        resizeRendererToDisplaySize(renderer);
+  requestAnimationFrame(render);
+}
 
-        {
-        const canvas = renderer.domElement;
-        camera.aspect = canvas.clientWidth / canvas.clientHeight;
-        camera.updateProjectionMatrix();
-        }
-        controls.update();
-        
-        renderer.render(scene, camera);
+function component(_vec, _direction){
+  var vec = _vec.clone();
+  var direction = _direction.clone().normalize();
 
-        requestAnimationFrame(render);
-    }
+  scalar = vec.dot(direction);
+  direction.multiplyScalar(scalar);
 
+  return direction;
+}
 
-function createControls( camera ) {
+function calcAcceleration(){
+  return component(gravity, velocity);
+}
 
-    controls = new TrackballControls( camera, renderer.domElement );
+function updatePitch(){
+  
+}
 
-    controls.rotateSpeed = 1.0;
-    controls.zoomSpeed = 5;
-    controls.panSpeed = 0.8;
-
-    //     This array holds keycodes for controlling interactions.
-
-// When the first defined key is pressed, all mouse interactions (left, middle, right) performs orbiting.
-// When the second defined key is pressed, all mouse interactions (left, middle, right) performs zooming.
-// When the third defined key is pressed, all mouse interactions (left, middle, right) performs panning.
-// Default is KeyA, KeyS, KeyD which represents A, S, D.
-    controls.keys = [ 'KeyA', 'KeyS', 'KeyD' ];
-
-
+function updateYaw(){
 
 }
 
