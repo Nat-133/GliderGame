@@ -3,8 +3,14 @@ import { TrackballControls } from '../Common/examples/jsm/controls/TrackballCont
 
 import { GLTFLoader } from '../Common/examples/jsm/loaders/GLTFLoader.js';
 import { PointerLockControls } from '../Common/examples/jsm/controls/PointerLockControls.js';
+import { GliderController } from './GliderController.js';
+import { ThirdPersonCamera } from './ThirdPersonCamera.js';
 
-let camera, controls, scene, renderer, canvas;
+let camera, controls, scene, renderer, canvas, clock;
+
+let thirdPersonCamera;
+let gliderController;
+
 let direction;  // normalised view direction
 let pos, vel, acc;
 
@@ -13,24 +19,20 @@ let yawVel, pitchVel;  // in radians
 var origin = new THREE.Vector3(0,0,0);
 var gravity = new THREE.Vector3(0, -1, 0);
 
+
+
 function main() {
   canvas = document.getElementById( "gl-canvas" );
   renderer = new THREE.WebGLRenderer({canvas});
   renderer.shadowMap.enabled = true;
-  direction = new THREE.Vector3(0,0,-1);
-  acc = new THREE.Vector3(0, 0, 0);
-  vel = new THREE.Vector3(0, 0, 0);
-  pos = new THREE.Vector3(0, 25, 0);
-  
-  yawVel = 0;
-  pitchVel = 0;
 
   const fov = 45;
   const aspect = 2;  // the canvas default
   const near = 0.1;
   const far = 100;
-  camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-  camera.position.set(pos.x, pos.y, pos.z);
+  
+  var camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+  camera.position.set(0, 100, 0);
   camera.up = new THREE.Vector3(0,1,0);
 
   
@@ -40,6 +42,9 @@ function main() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color('black');
   scene.add(camera);
+
+  gliderController = new GliderController(scene);
+  thirdPersonCamera = new ThirdPersonCamera(camera, gliderController);
 
   // draw plane
   const planeSize = 40000;
@@ -119,6 +124,8 @@ function main() {
   scene.add(helper);
 
   initFlightControls();
+
+  clock = new THREE.Clock();
   requestAnimationFrame(render);
 
 }
@@ -166,20 +173,21 @@ function initFlightControls(){
 }
 
 function render() {
+  // ============ Animation loop ============
+  var delta = clock.getDelta();
   
-  updateAcc();
-  updateVel();
-  updatePos();
-  updateCamera();
-  //console.log(vel.angleTo(camera.up), pos.y);
+  gliderController.Update(delta);
+  thirdPersonCamera.Update(delta);
+
+  
   resizeRendererToDisplaySize(renderer);
   {
     const canvas = renderer.domElement;
-    camera.aspect = canvas.clientWidth / canvas.clientHeight;
-    camera.updateProjectionMatrix();
+    thirdPersonCamera.camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    thirdPersonCamera.camera.updateProjectionMatrix();
   }
   
-  renderer.render(scene, camera);
+  renderer.render(scene, thirdPersonCamera.camera);
 
   requestAnimationFrame(render);
 }

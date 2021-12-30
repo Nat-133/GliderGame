@@ -1,17 +1,20 @@
-class FlightInput{
-    down: boolean;
-    up: boolean;
-    right: boolean;
-    left: boolean;
+export class GliderInput{
+    down;
+    up;
+    right;
+    left;
 
     constructor(){
         this.down = false;
         this.up = false;
         this.right = false;
         this.left = false;
+
+        document.onkeydown = this.onKeyDown;
+        document.onkeyup = this.onKeyUp;
     }
     
-    _onKeyDown(e: KeyboardEvent){
+    onKeyDown(e){
         if (e.key == "a"){
             this.left = true;
         }else if (e.key == "d"){
@@ -23,7 +26,7 @@ class FlightInput{
         }
     }
 
-    _onKeyUp(e: KeyboardEvent){
+    onKeyUp(e){
         if (e.key == "a"){ 
             this.left = false;
         } else if (e.key == "d"){
