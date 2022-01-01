@@ -10,10 +10,16 @@ export class GliderInput{
         this.right = false;
         this.left = false;
 
-        document.onkeydown = this.onKeyDown;
-        document.onkeyup = this.onKeyUp;
+        //document.addEventListener("keydown", (e) => this.onKeyDown(e));
+        document.onkeydown = (e) => this.onKeyDown(e);
+        document.onkeyup = (e) => this.onKeyUp(e);
+        // these two lines cause me so much hasstle
+        // for some reason methods don't remember what object they belong to? maybe?
+        // all I know is that the lambda function makes it work, presumably because
+        // the object is explicitly saved in 'this.'?
+        // who knows, javascript is a wee bit wack.
     }
-    
+
     onKeyDown(e){
         if (e.key == "a"){
             this.left = true;

@@ -36,9 +36,6 @@ function main() {
   camera.up = new THREE.Vector3(0,1,0);
 
   
-  //createControls( camera );
-  //controls.update();
-  
   scene = new THREE.Scene();
   scene.background = new THREE.Color('black');
   scene.add(camera);
@@ -57,7 +54,7 @@ function main() {
   const PlaneMesh = new THREE.Mesh(planeGeo, planeMat);
   PlaneMesh.receiveShadow = true;
   PlaneMesh.rotation.x = Math.PI * -.5;
-  scene.add(PlaneMesh);
+  //scene.add(PlaneMesh);
 
   // draw cube
   const cubeSize = 4;
@@ -123,7 +120,7 @@ function main() {
   const helper = new THREE.PointLightHelper(light);
   scene.add(helper);
 
-  initFlightControls();
+  //initFlightControls();
 
   clock = new THREE.Clock();
   requestAnimationFrame(render);
@@ -169,13 +166,11 @@ function initFlightControls(){
       pitchVel = 0;
     }
   }
-  console.log("flightControls Initialised");
 }
 
 function render() {
   // ============ Animation loop ============
   var delta = clock.getDelta();
-  
   gliderController.Update(delta);
   thirdPersonCamera.Update(delta);
 
