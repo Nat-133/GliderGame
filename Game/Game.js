@@ -2,7 +2,6 @@ import * as THREE from '../Common/build/three.module.js';
 import { TrackballControls } from '../Common/examples/jsm/controls/TrackballControls.js';
 
 import { GLTFLoader } from '../Common/examples/jsm/loaders/GLTFLoader.js';
-import { PointerLockControls } from '../Common/examples/jsm/controls/PointerLockControls.js';
 import { GliderController } from './GliderController.js';
 import { ThirdPersonCamera } from './ThirdPersonCamera.js';
 
@@ -44,7 +43,7 @@ function main() {
   thirdPersonCamera = new ThirdPersonCamera(camera, gliderController);
 
   // draw plane
-  const planeSize = 40000;
+  const planeSize = 4000;
 
   const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
   const planeMat = new THREE.MeshPhongMaterial({
@@ -54,17 +53,37 @@ function main() {
   const PlaneMesh = new THREE.Mesh(planeGeo, planeMat);
   PlaneMesh.receiveShadow = true;
   PlaneMesh.rotation.x = Math.PI * -.5;
-  //scene.add(PlaneMesh);
+  scene.add(PlaneMesh);
 
   // draw cube
   const cubeSize = 4;
   const cubeGeo = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
   const cubeMat = new THREE.MeshPhongMaterial({color: '#8AC'});
   const cubeMesh = new THREE.Mesh(cubeGeo, cubeMat);
-  cubeMesh.castShadow = true;
-  cubeMesh.receiveShadow = true;
+  cubeMesh.castShadow = false;
+  cubeMesh.receiveShadow = false;
   cubeMesh.position.set(cubeSize + 1, cubeSize / 2, 0);
-  scene.add(cubeMesh);
+  //scene.add(cubeMesh);
+
+  //draw buildings
+  var buildingSize = 1;
+  var minHeight = 100;
+  var maxHeight = 200;
+  
+  for (let x = -planeSize/2; x<=planeSize/2; x += 40){
+    for (let z = -planeSize/2; z<=planeSize/2; z += 40){
+      var height = Math.random(maxHeight - minHeight) + minHeight;
+
+      var buildGeo = new THREE.BoxGeometry(buildingSize, height, buildingSize);
+      var buildMat = new THREE.MeshPhongMaterial({color: '#aaaa99'});
+      var buildMesh = new THREE.Mesh(buildGeo, buildMat);
+      buildMesh.castShadow = true;
+      buildMesh.receiveShadow = true;
+      buildMesh.position.set(x, height, z);
+
+      scene.add(buildMesh);
+    }
+  }
    
   
   // draw scene border
