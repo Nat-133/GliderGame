@@ -30,7 +30,6 @@ export class ThirdPersonCamera {
 
     CalcOptFocus(){
         var vertOffset = Math.max(Math.cos(this.target.pitch)-0.1, 0);
-        console.log(vertOffset);
         var optFocus = new THREE.Vector3(0,vertOffset,5);
         optFocus.applyQuaternion(this.target.rotation);
         optFocus.add(this.target.pos);

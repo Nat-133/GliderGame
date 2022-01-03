@@ -34,16 +34,17 @@ function main() {
   camera.position.set(0, 100, 0);
   camera.up = new THREE.Vector3(0,1,0);
 
-  
+  var fogColour = 0xffffff;
   scene = new THREE.Scene();
-  scene.background = new THREE.Color('black');
+  scene.background = new THREE.Color(fogColour);
+  scene.fog = new THREE.Fog(fogColour, 20, 90);
   scene.add(camera);
 
   gliderController = new GliderController(scene);
   thirdPersonCamera = new ThirdPersonCamera(camera, gliderController);
 
   // draw plane
-  const planeSize = 4000;
+  const planeSize = 400;
 
   const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
   const planeMat = new THREE.MeshPhongMaterial({
@@ -66,20 +67,20 @@ function main() {
   //scene.add(cubeMesh);
 
   //draw buildings
-  var buildingSize = 1;
+  var buildingSize = 5;
   var minHeight = 100;
-  var maxHeight = 200;
-  
-  for (let x = -planeSize/2; x<=planeSize/2; x += 40){
-    for (let z = -planeSize/2; z<=planeSize/2; z += 40){
-      var height = Math.random(maxHeight - minHeight) + minHeight;
+  var maxHeight = 1000;
+
+  for (let x = -planeSize/2; x<=planeSize/2; x += buildingSize*2){
+    for (let z = -planeSize/2; z<=planeSize/2; z += buildingSize*2){
+      var height = Math.randomInt(minHeight, maxHeight);
 
       var buildGeo = new THREE.BoxGeometry(buildingSize, height, buildingSize);
       var buildMat = new THREE.MeshPhongMaterial({color: '#aaaa99'});
       var buildMesh = new THREE.Mesh(buildGeo, buildMat);
-      buildMesh.castShadow = true;
-      buildMesh.receiveShadow = true;
-      buildMesh.position.set(x, height, z);
+      buildMesh.castShadow = false;
+      buildMesh.receiveShadow = false;
+      buildMesh.position.set(x, height/2, z);
 
       scene.add(buildMesh);
     }
@@ -116,7 +117,7 @@ function main() {
       }
     });
 
-    scene.add( gltf.scene );
+    //scene.add( gltf.scene );
   }, undefined, function ( error ) {
 
   console.error( error );

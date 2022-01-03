@@ -24,7 +24,7 @@ export class GliderController {
     constructor(scene){
         this.acc = new THREE.Vector3(0,0,0);
         this.vel = new THREE.Vector3(0,0,0);
-        this.pos = new THREE.Vector3(0,100,0);
+        this.pos = new THREE.Vector3(0,500,0);
 
         this.glideRatio = 1/20;
 
@@ -176,8 +176,8 @@ export class GliderController {
 
     UpdateRotation(delta){
         var pitchVel = ((+ this.input.up) - (+ this.input.down)) * delta;
-        var fSpeed = this.forwards.dot(this.vel);
-        //pitchVel -= Math.min(delta/(fSpeed), Math.PI/2+this.pitch-0.1);
+        var fSpeed = Math.max(this.forwards.dot(this.vel)*2, 0.1);
+        pitchVel -= delta/fSpeed;
         this.AddPitch(pitchVel);
 
         var rollVel =  ((+ this.input.right) - (+ this.input.left)) * delta;
@@ -292,6 +292,5 @@ export class GliderController {
         //console.log(this.pitch/(Math.PI/2));
         //console.log("relVel", this.relativeVel);
         // update model
-        console.log(this.forwards);
     }
 }
