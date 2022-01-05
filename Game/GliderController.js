@@ -209,7 +209,7 @@ export class GliderController {
 
         var forwardDrag = this.forwards.clone();
         forwardDrag.multiplyScalar(this.vel.dot(forwardDrag));
-        forwardDrag.multiplyScalar(-forwardDrag.length()/1000);
+        forwardDrag.multiplyScalar(-forwardDrag.length()/10000);
         this.acc.add(forwardDrag);
 
         var horizontalDrag = this.left;
@@ -234,7 +234,6 @@ export class GliderController {
         }
         */
 
-
     }
 
     UpdateVel(){
@@ -250,7 +249,7 @@ export class GliderController {
 
         var forwardsDrag = forwardsAcc;
         forwardsDrag.multiplyScalar(this.vel.dot(forwardsDrag));
-        this.vel.addScaledVector(forwardsDrag, -1*forwardsDrag.length()/1000);
+        this.vel.addScaledVector(forwardsDrag, -1*forwardsDrag.length()/20000);
 
         var horizontalDrag = this.left;
         horizontalDrag.multiplyScalar(this.vel.dot(horizontalDrag));
@@ -262,6 +261,8 @@ export class GliderController {
             console.log("fuck");
         }
         this.vel.add(this.acc);*/
+        console.log(this.relativeVel);
+
     }
     
     UpdatePos(delta){

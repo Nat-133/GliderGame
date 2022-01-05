@@ -28,7 +28,7 @@ function main() {
   const fov = 45;
   const aspect = 2;  // the canvas default
   const near = 0.1;
-  const far = 100;
+  const far = 1000;
   
   var camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   camera.position.set(0, 100, 0);
@@ -37,14 +37,14 @@ function main() {
   var fogColour = 0xffffff;
   scene = new THREE.Scene();
   scene.background = new THREE.Color(fogColour);
-  scene.fog = new THREE.Fog(fogColour, 20, 90);
+  scene.fog = new THREE.Fog(fogColour, far-20, far);
   scene.add(camera);
 
   gliderController = new GliderController(scene);
   thirdPersonCamera = new ThirdPersonCamera(camera, gliderController);
 
   // draw plane
-  const planeSize = 400;
+  const planeSize = 4000;
 
   const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
   const planeMat = new THREE.MeshPhongMaterial({
@@ -67,13 +67,13 @@ function main() {
   //scene.add(cubeMesh);
 
   //draw buildings
-  var buildingSize = 5;
+  var buildingSize = 10;
   var minHeight = 100;
-  var maxHeight = 1000;
+  var maxHeight = 300;
 
-  for (let x = -planeSize/2; x<=planeSize/2; x += buildingSize*2){
+  for (let x = -planeSize/2; x<=planeSize/2; x += buildingSize*3){
     for (let z = -planeSize/2; z<=planeSize/2; z += buildingSize*2){
-      var height = Math.randomInt(minHeight, maxHeight);
+      var height = Math.floor(Math.random() * (maxHeight-minHeight)) + minHeight;
 
       var buildGeo = new THREE.BoxGeometry(buildingSize, height, buildingSize);
       var buildMat = new THREE.MeshPhongMaterial({color: '#aaaa99'});
