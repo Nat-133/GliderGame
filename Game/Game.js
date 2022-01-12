@@ -2,6 +2,7 @@ import * as THREE from '../Common/build/three.module.js';
 import { TrackballControls } from '../Common/examples/jsm/controls/TrackballControls.js';
 
 import { GLTFLoader } from '../Common/examples/jsm/loaders/GLTFLoader.js';
+import { City } from './CityGeneration.js';
 import { GliderController } from './GliderController.js';
 import { ThirdPersonCamera } from './ThirdPersonCamera.js';
 
@@ -9,6 +10,7 @@ let camera, controls, scene, renderer, canvas, clock;
 
 let thirdPersonCamera;
 let gliderController;
+let city;
 
 let direction;  // normalised view direction
 let pos, vel, acc;
@@ -42,6 +44,8 @@ function main() {
 
   gliderController = new GliderController(scene);
   thirdPersonCamera = new ThirdPersonCamera(camera, gliderController);
+  city = new City();
+  scene.add(city);
 
   // draw plane
   const planeSize = 4000;
@@ -82,7 +86,7 @@ function main() {
       buildMesh.receiveShadow = false;
       buildMesh.position.set(x, height/2, z);
 
-      scene.add(buildMesh);
+      //scene.add(buildMesh);
     }
   }
    

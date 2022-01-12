@@ -19,12 +19,12 @@ export class GliderController {
     scene;
 
     glideRatio; // how far the glider falls for each unit travelled horizontally when level
-    gravity = new THREE.Vector3(0, -1, 0);
+    gravity = new THREE.Vector3(0, -10, 0);
 
     constructor(scene){
         this.acc = new THREE.Vector3(0,0,0);
         this.vel = new THREE.Vector3(0,0,0);
-        this.pos = new THREE.Vector3(0,500,0);
+        this.pos = new THREE.Vector3(0,1000,0);
 
         this.glideRatio = 1/20;
 
@@ -99,6 +99,9 @@ export class GliderController {
     get up(){
         var vec = new THREE.Vector3(0,1,0);
         vec.applyQuaternion(this.rotation);
+        if (isNaN(vec.x)){
+            console.log("up fuck")
+        }
         return vec;
     }
 
@@ -142,7 +145,7 @@ export class GliderController {
     AddRoll(angle){
         var axis = new THREE.Vector3(0,0,1);
         var newRoll = this.roll+angle;
-        if (Math.abs(newRoll) > Math.PI/2){
+        if (Math.abs(newRoll) > 3*Math.PI/8 && Math.abs(newRoll) > Math.abs(this.roll)){
             return;
         }
         this.model.rotateOnAxis(axis, angle);
@@ -154,6 +157,7 @@ export class GliderController {
         if ( newPitch < -Math.PI/2 || newPitch > Math.PI/2){
             var altAngle = newPitch - Math.sign(newPitch)*Math.PI/2;
             this.model.rotateOnAxis(axis, -altAngle);
+            this.model.up.copy(this.up);
             var look = new THREE.Vector3(0, this.forwards.y, 0);
             look.addScaledVector(this.up, -Math.sign(look.y) * 0.001);
             look.add(this.pos);
@@ -171,19 +175,41 @@ export class GliderController {
         q.invert();
         axis.applyQuaternion(q);
         this.model.rotateOnAxis(axis, angle);
+    }
 
+    Stall(angle){
+        // rotate the glider to point downwards, egnoring local orientation
+        let axis = new THREE.Vector3(0, 1, 0);
+        axis.cross(this.forwards);  // axis in world coordinates
+        let q = this.model.quaternion.clone();  // quaternion rotation to world coordinates
+        q.invert();
+        axis.applyQuaternion(q);  // axis in local coordinates
+        let newAngle = this.pitch + angle;
+        this.model.up.copy(this.up);
+        this.model.rotateOnAxis(axis, angle);
+        if (newAngle < -Math.PI/2 || newAngle > Math.PI/2){
+            let look = new THREE.Vector3(0, this.forwards.y, 0);
+            look.addScaledVector(this.up, -Math.sign(look.y) * 0.001);
+            look.add(this.pos);
+            this.model.lookAt(look);
+            this.atMaxPitch = true;
+        }else{
+            this.atMaxPitch = false;
+        }
     }
 
     UpdateRotation(delta){
         var pitchVel = ((+ this.input.up) - (+ this.input.down)) * delta;
-        var fSpeed = Math.max(this.forwards.dot(this.vel)*2, 0.1);
-        pitchVel -= delta/fSpeed;
         this.AddPitch(pitchVel);
 
-        var rollVel =  ((+ this.input.right) - (+ this.input.left)) * delta;
+        var fSpeed = Math.max(this.forwards.dot(this.vel)*2, 0.1);
+        let stallVel = delta/(0.5*fSpeed);
+        this.Stall(stallVel);
+
+        var rollVel =  ((+ this.input.right) - (+ this.input.left)) * delta * 2;
         if (rollVel == 0){
             // roll back towards xz plane
-            var defaultVel = -Math.sign(this.roll) * delta;
+            var defaultVel = -Math.sign(this.roll) * delta * 3;
             var smallerVel = -this.roll;
             rollVel = Math.abs(defaultVel) < Math.abs(smallerVel) ? defaultVel : smallerVel; 
         }
@@ -191,10 +217,14 @@ export class GliderController {
 
         var yawVel = -this.left.dot(new THREE.Vector3(0,1,0)) * delta;
         this.AddYaw(yawVel);
+
+        if (this.forwards.x === Infinity){
+            console.log("large fuck");
+        }
     }
 
     UpdateAcceleration(){
-        this.acc.set(0, 1, 0);
+        this.acc.set(0, 10, 0);
         
         var upVel = this.up;
         upVel.multiplyScalar(-upVel.dot(this.vel)); // component of velocity directly up from wings
@@ -209,7 +239,7 @@ export class GliderController {
 
         var forwardDrag = this.forwards.clone();
         forwardDrag.multiplyScalar(this.vel.dot(forwardDrag));
-        forwardDrag.multiplyScalar(-forwardDrag.length()/10000);
+        forwardDrag.multiplyScalar(-forwardDrag.length()/100000);
         this.acc.add(forwardDrag);
 
         var horizontalDrag = this.left;
@@ -238,30 +268,54 @@ export class GliderController {
 
     UpdateVel(){
         this.vel.add(this.gravity);
-
+        console.log("a", this.vel);
         var upVel = this.up;
-
+        console.log("b", upVel);
+        if (isNaN(this.vel.x)){
+            console.log("fuck");
+        }
         upVel.multiplyScalar(this.vel.dot(upVel));
+        console.log("c", upVel);
         this.vel.addScaledVector(upVel, -1);
-
+        console.log("d", this.vel);
+        if (isNaN(this.vel.x)){
+            console.log("fuck");
+        }
         var forwardsAcc = this.forwards;
+        console.log("d", forwardsAcc);
+        if (upVel.length() === Infinity){
+            console.log("upVel fuck", upVel);
+        }
         this.vel.addScaledVector(forwardsAcc, upVel.length()/10);
-
+        console.log("d1", upVel.length());
+        console.log("e", this.vel);
+        if (isNaN(this.vel.x)){
+            console.log("fuck");
+        }
         var forwardsDrag = forwardsAcc;
+        console.log("f", forwardsDrag);
         forwardsDrag.multiplyScalar(this.vel.dot(forwardsDrag));
-        this.vel.addScaledVector(forwardsDrag, -1*forwardsDrag.length()/20000);
-
+        console.log("g", forwardsDrag);
+        this.vel.addScaledVector(forwardsDrag, -1*forwardsDrag.length()/2000);
+        console.log("h", this.vel);
+        if (isNaN(this.vel.x)){
+            console.log("fuck");
+        }
         var horizontalDrag = this.left;
+        console.log("i", horizontalDrag);
         horizontalDrag.multiplyScalar(this.vel.dot(horizontalDrag));
-        this.vel.addScaledVector(horizontalDrag, -1*horizontalDrag.length());
-
+        console.log("j", horizontalDrag);
+        this.vel.addScaledVector(horizontalDrag, -1*0.95);
+        console.log("k", this.vel);
+        if (isNaN(this.vel.x) || this.vel.y === Infinity){
+            console.log("fuck");
+        }
         /*var newVel = this.vel.clone();
         newVel.add(this.acc);
         if (isNaN(newVel.x)){
             console.log("fuck");
         }
         this.vel.add(this.acc);*/
-        console.log(this.relativeVel);
 
     }
     
@@ -286,12 +340,13 @@ export class GliderController {
         // calculate rotation (controls + speed)
         //this.UpdateAcceleration();
         this.UpdateVel();
-
+        console.log("vel",this.vel);
         this.UpdatePos(delta);
-
+        console.log("vel",this.vel);
         this.UpdateModel();
-        //console.log(this.pitch/(Math.PI/2));
-        //console.log("relVel", this.relativeVel);
+        // console.log(this.pitch/(Math.PI/2));
+        // console.log("relVel", this.relativeVel);
         // update model
+        console.log("vel",this.vel);
     }
 }
