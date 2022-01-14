@@ -40,13 +40,20 @@ export class GliderController {
 
     LoadModel(){
         var loader = new GLTFLoader();
-        loader.load('../GlTF_Models/placeholder.glb', (gltf) => {
+        loader.load('../GlTF_Models/glider.glb', (gltf) => {
             gltf.scene.position.set(0,1,0);
             gltf.scene.children[0].scale.set(0.5,0.5,0.5);
             //gltf.scene.children[0].rotation.set(0,Math.PI,0);
             //gltf.scene.children[0].visible = false;
             this.model = gltf.scene;
+            let lightTarget = new THREE.Object3D();
+            lightTarget.position.set(0, 0, 2);
+            this.model.add(lightTarget);
+            let spotlight = new THREE.SpotLight(0xffffff, 0.5, 0, Math.PI/6, 0.5, 0.2);
+            spotlight.target = lightTarget;
+            this.model.add(spotlight);
             this.scene.add(this.model);
+            spotlight.position.set(0,0,1);
             this.AddDebugAxes();
         });
         
@@ -99,9 +106,6 @@ export class GliderController {
     get up(){
         var vec = new THREE.Vector3(0,1,0);
         vec.applyQuaternion(this.rotation);
-        if (isNaN(vec.x)){
-            console.log("up fuck")
-        }
         return vec;
     }
 
@@ -136,6 +140,39 @@ export class GliderController {
         }
 
         return this.model.quaternion;
+    }
+
+    get boundingLines(){
+        let relpoints = [
+            new THREE.Vector3(0.5,0.5,0.5),
+            new THREE.Vector3(-0.5,0.5,0.5),
+            new THREE.Vector3(-0.5,0.5,-0.5),
+            new THREE.Vector3(0.5,0.5,-0.5),
+            new THREE.Vector3(0.5,-0.5,0.5),
+            new THREE.Vector3(-0.5,-0.5,0.5),
+            new THREE.Vector3(-0.5,-0.5,-0.5),
+            new THREE.Vector3(0.5,-0.5,-0.5)
+        ];
+
+        let points = [];
+        for (let i=0; i<relpoints.length; i++){
+            let point = relpoints[i];
+            points.push(this.model.localToWorld(point));
+        }
+
+        let linePointers = [
+            [0,1], [1,2], [2,3], [3,1], 
+            [4,5], [5,6], [6,7], [7,4],
+            [0,4], [5,1], [2,6], [7,3]
+        ];
+
+        let lines = []
+        for (const linePointer of linePointers){
+            let p1 = linePointer[0];
+            let p2 = linePointer[1];
+            lines.push([points[p1], points[p2]]);
+        }
+        return lines;
     }
 
     GetAngleToPlane(vector, planeNormal){
@@ -217,10 +254,6 @@ export class GliderController {
 
         var yawVel = -this.left.dot(new THREE.Vector3(0,1,0)) * delta;
         this.AddYaw(yawVel);
-
-        if (this.forwards.x === Infinity){
-            console.log("large fuck");
-        }
     }
 
     UpdateAcceleration(){
@@ -268,48 +301,17 @@ export class GliderController {
 
     UpdateVel(){
         this.vel.add(this.gravity);
-        console.log("a", this.vel);
         var upVel = this.up;
-        console.log("b", upVel);
-        if (isNaN(this.vel.x)){
-            console.log("fuck");
-        }
         upVel.multiplyScalar(this.vel.dot(upVel));
-        console.log("c", upVel);
         this.vel.addScaledVector(upVel, -1);
-        console.log("d", this.vel);
-        if (isNaN(this.vel.x)){
-            console.log("fuck");
-        }
         var forwardsAcc = this.forwards;
-        console.log("d", forwardsAcc);
-        if (upVel.length() === Infinity){
-            console.log("upVel fuck", upVel);
-        }
         this.vel.addScaledVector(forwardsAcc, upVel.length()/10);
-        console.log("d1", upVel.length());
-        console.log("e", this.vel);
-        if (isNaN(this.vel.x)){
-            console.log("fuck");
-        }
         var forwardsDrag = forwardsAcc;
-        console.log("f", forwardsDrag);
         forwardsDrag.multiplyScalar(this.vel.dot(forwardsDrag));
-        console.log("g", forwardsDrag);
         this.vel.addScaledVector(forwardsDrag, -1*forwardsDrag.length()/2000);
-        console.log("h", this.vel);
-        if (isNaN(this.vel.x)){
-            console.log("fuck");
-        }
         var horizontalDrag = this.left;
-        console.log("i", horizontalDrag);
         horizontalDrag.multiplyScalar(this.vel.dot(horizontalDrag));
-        console.log("j", horizontalDrag);
         this.vel.addScaledVector(horizontalDrag, -1*0.95);
-        console.log("k", this.vel);
-        if (isNaN(this.vel.x) || this.vel.y === Infinity){
-            console.log("fuck");
-        }
         /*var newVel = this.vel.clone();
         newVel.add(this.acc);
         if (isNaN(newVel.x)){
@@ -340,13 +342,38 @@ export class GliderController {
         // calculate rotation (controls + speed)
         //this.UpdateAcceleration();
         this.UpdateVel();
-        console.log("vel",this.vel);
         this.UpdatePos(delta);
-        console.log("vel",this.vel);
         this.UpdateModel();
         // console.log(this.pitch/(Math.PI/2));
         // console.log("relVel", this.relativeVel);
         // update model
-        console.log("vel",this.vel);
+        this.model.visible = !this.input.firstPerson;
+    }
+
+    Collides(object){
+        // returns true if the glider's hit the floor or a building
+        if (this.pos.y <=0){
+            return true;
+        }
+
+        let lines = this.boundingLines;
+        for (const points of lines){
+            let direction = points[1].clone();
+            direction.sub(points[0]);
+            let length = direction.length();
+            let ray = new THREE.Raycaster(points[0], direction.normalize());
+            let collisions = ray.intersectObjects(object.children);
+            if (collisions.length > 0 && collisions[0].distance < length){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    Restart(){
+        this.pos.set(0,1000,0);
+        this.vel.set(0,0,10);
+        this.model.rotation.set(0,0,0);
+        this.UpdateModel();
     }
 }

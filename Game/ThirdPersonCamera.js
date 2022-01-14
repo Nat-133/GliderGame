@@ -15,9 +15,13 @@ export class ThirdPersonCamera {
     }
 
     CalcOptPos(){
+        if (this.target.input.firstPerson){
+            return this.target.pos;
+        }
         //var optPos = new THREE.Vector3(0, 10, -20 + this.target.vel.length());
-        var vertOffset = Math.max(Math.cos(this.target.pitch)-0.1, 0)*10;
-        var optPos = new THREE.Vector3(0, vertOffset, -20);
+        var scale = this.target.vel.length()/5;
+        var vertOffset = Math.max(Math.cos(this.target.pitch)-0.1, 0)*5;
+        var optPos = new THREE.Vector3(0, vertOffset, -2 - scale);
         // offset increased as glider goes faster
 
         optPos.applyQuaternion(this.target.rotation);
@@ -29,8 +33,11 @@ export class ThirdPersonCamera {
     }
 
     CalcOptFocus(){
-        var vertOffset = Math.max(Math.cos(this.target.pitch)-0.1, 0);
-        var optFocus = new THREE.Vector3(0,vertOffset,5);
+        let vertOffset = 0;
+        if (!this.target.input.firstPerson){
+            vertOffset = Math.max(Math.cos(this.target.pitch)-0.1, 0);
+        }
+        let optFocus = new THREE.Vector3(0,vertOffset,this.target.vel.length()/20);
         optFocus.applyQuaternion(this.target.rotation);
         optFocus.add(this.target.pos);
         return optFocus;

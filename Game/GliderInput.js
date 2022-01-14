@@ -3,13 +3,14 @@ export class GliderInput{
     up;
     right;
     left;
+    firstperson;
 
     constructor(){
         this.down = false;
         this.up = false;
         this.right = false;
         this.left = false;
-
+        this.firstPerson = false;
         //document.addEventListener("keydown", (e) => this.onKeyDown(e));
         document.onkeydown = (e) => this.onKeyDown(e);
         document.onkeyup = (e) => this.onKeyUp(e);
@@ -29,6 +30,8 @@ export class GliderInput{
             this.down = true;
         }else if (e.key == "s"){
             this.up = true;
+        }else if (e.key == "f"){
+            this.firstPerson = ! this.firstPerson;
         }
     }
 

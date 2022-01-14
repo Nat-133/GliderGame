@@ -5,22 +5,22 @@ import { GLTFLoader } from '../Common/examples/jsm/loaders/GLTFLoader.js';
 import { City } from './CityGeneration.js';
 import { GliderController } from './GliderController.js';
 import { ThirdPersonCamera } from './ThirdPersonCamera.js';
+import { HUD } from './HUD.js';
+import { MainMenu } from './MainMenu.js';
+import { DeathMenu } from './DeathMenu.js';
 
-let camera, controls, scene, renderer, canvas, clock;
+let camera, scene, renderer, canvas, clock;
 
 let thirdPersonCamera;
 let gliderController;
 let city;
+let hud;
+let mainMenu;
+let deathMenu;
 
-let direction;  // normalised view direction
-let pos, vel, acc;
-
-let yawVel, pitchVel;  // in radians
-
-var origin = new THREE.Vector3(0,0,0);
-var gravity = new THREE.Vector3(0, -1, 0);
-
-
+let states = ["main", "game", "death"];
+let state = 0;
+let newState = false;
 
 function main() {
   canvas = document.getElementById( "gl-canvas" );
@@ -32,7 +32,7 @@ function main() {
   const near = 0.1;
   const far = 1000;
   
-  var camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+  camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   camera.position.set(0, 100, 0);
   camera.up = new THREE.Vector3(0,1,0);
 
@@ -44,15 +44,19 @@ function main() {
 
   gliderController = new GliderController(scene);
   thirdPersonCamera = new ThirdPersonCamera(camera, gliderController);
+  thirdPersonCamera.Update(1);
   city = new City();
   scene.add(city);
+  hud = new HUD(gliderController);
+  mainMenu = new MainMenu();
+  deathMenu = new DeathMenu();
 
   // draw plane
   const planeSize = 4000;
 
   const planeGeo = new THREE.PlaneGeometry(planeSize, planeSize);
   const planeMat = new THREE.MeshPhongMaterial({
-    color: 0xADD8E6,
+    color: 0x333333,
     side: THREE.DoubleSide,
   });
   const PlaneMesh = new THREE.Mesh(planeGeo, planeMat);
@@ -70,67 +74,14 @@ function main() {
   cubeMesh.position.set(cubeSize + 1, cubeSize / 2, 0);
   //scene.add(cubeMesh);
 
-  //draw buildings
-  var buildingSize = 10;
-  var minHeight = 100;
-  var maxHeight = 300;
-
-  for (let x = -planeSize/2; x<=planeSize/2; x += buildingSize*3){
-    for (let z = -planeSize/2; z<=planeSize/2; z += buildingSize*2){
-      var height = Math.floor(Math.random() * (maxHeight-minHeight)) + minHeight;
-
-      var buildGeo = new THREE.BoxGeometry(buildingSize, height, buildingSize);
-      var buildMat = new THREE.MeshPhongMaterial({color: '#aaaa99'});
-      var buildMesh = new THREE.Mesh(buildGeo, buildMat);
-      buildMesh.castShadow = false;
-      buildMesh.receiveShadow = false;
-      buildMesh.position.set(x, height/2, z);
-
-      //scene.add(buildMesh);
-    }
-  }
-   
-  
-  // draw scene border
-  const ExtCubeSize = 30;
-  const ExtCubeGeo = new THREE.BoxGeometry(ExtCubeSize, ExtCubeSize, ExtCubeSize);
-  const ExtCubeMat = new THREE.MeshPhongMaterial({
-    color: '#0C0C0C',
-    side: THREE.BackSide,
-  });
-  const ExtMeshCube = new THREE.Mesh(ExtCubeGeo, ExtCubeMat);
-  ExtMeshCube.receiveShadow = true;
-  ExtMeshCube.position.set(0, ExtCubeSize / 2 - 0.1, 0);
-  //scene.add(ExtMeshCube);
-
-  // draw model
-  const loader = new GLTFLoader();
-
-  loader.load( '../GlTF_Models/minion_alone.glb', function ( gltf ) {
-    gltf.scene.position.set(-6,3,-3);
-    gltf.scene.scale.set(3,3,3);
-    gltf.scene.rotation.set(0,Math.PI*(1/4),0);
-
-    var colour = new THREE.Color(0x00f000);
-    gltf.scene.traverse( function( node ){
-      if(node.isMesh){
-        var newMaterial = new THREE.MeshPhongMaterial({
-          color: colour
-        });
-        //node.material = newMaterial;
-      }
-    });
-
-    //scene.add( gltf.scene );
-  }, undefined, function ( error ) {
-
-  console.error( error );
-
-  } );
-
   // add ambient light
-  const ambLight = new THREE.AmbientLight( 0x404040,1.2 ); // soft white light
+  const ambLight = new THREE.AmbientLight( 0x404040,1.2); // soft white light
   scene.add( ambLight );
+
+  const sunlight = new THREE.DirectionalLight(0xfdfbd3, 1.2);
+  sunlight.position.set(2, 2, 1);
+  sunlight.castShadow = true;
+  scene.add(sunlight);
 
 
   // add point light source
@@ -139,7 +90,7 @@ function main() {
   const light = new THREE.PointLight(color, intensity);
   light.castShadow = true;
   light.position.set(5, 10, 8);
-  scene.add(light);
+  //scene.add(light);
 
   const helper = new THREE.PointLightHelper(light);
   scene.add(helper);
@@ -171,33 +122,61 @@ function onWindowResize() {
 
 }
 
-function initFlightControls(){
-  document.onkeydown = function(e){
-    if (e.key == "a"){
-      yawVel = 0.05;
-    }else if (e.key == "d"){
-      yawVel = -0.05;
-    }else if (e.key == "w"){
-      pitchVel = 0.05;
-    }else if (e.key == "s"){
-      pitchVel = -0.05;
-    }
-  }
-  document.onkeyup = function(e){
-    if (e.key == "a" || e.key == "d"){
-      yawVel = 0;
-    }else if (e.key == "w" || e.key == "s"){
-      pitchVel = 0;
-    }
-  }
-}
-
 function render() {
   // ============ Animation loop ============
   var delta = clock.getDelta();
-  gliderController.Update(delta);
-  thirdPersonCamera.Update(delta);
 
+  if (states[state] == "main"){
+    if (newState){
+      mainMenu.Display();
+      newState = false;
+    }
+    
+    if (mainMenu.nextState){
+      state = 1;
+      mainMenu.Hide();
+      mainMenu.nextState = false;
+      newState = true;
+    }
+  }else if (states[state] == "game"){
+    if (newState){
+      gliderController.Restart();
+      newState = false;
+    }
+    gliderController.Update(delta);
+    thirdPersonCamera.Update(delta);
+    hud.Update();
+
+    if (gliderController.Collides(city)){
+      newState = true;
+      state = 2;
+    }
+  }else if (states[state] == "death"){
+    if (newState){
+      deathMenu.Display();
+      newState = false;
+    }
+    if (deathMenu.newLevel){
+      scene.remove(city);
+      city = new City();
+      scene.add(city);
+
+      gliderController.Restart();
+      thirdPersonCamera.Update();
+
+      deathMenu.newLevel = false;
+    }
+    if (deathMenu.nextState){
+      state = 1;
+      deathMenu.Hide();
+      deathMenu.nextState = false;
+      newState = true;
+    }
+  }
+  
+
+
+  onWindowResize();
   
   resizeRendererToDisplaySize(renderer);
   {
@@ -209,67 +188,6 @@ function render() {
   renderer.render(scene, thirdPersonCamera.camera);
 
   requestAnimationFrame(render);
-}
-
-function component(_vec, _direction){
-  var vec = _vec.clone();
-  var direction = _direction.clone().normalize();
-
-  var scalar = vec.dot(direction);
-  direction.multiplyScalar(scalar);
-
-  return direction;
-}
-
-function calcDragAcc(){
-  var k = 0.5
-  var drag = vel.clone();
-  drag.multiplyScalar(-k * drag.length());
-  return drag;
-}
-
-function calcGravAcc(){
-  return component(gravity, direction);
-}
-
-function updateAcc(){
-  acc = calcGravAcc();
-  acc.add(calcDragAcc());
-}
-
-function updatePitch(){
-  var angle = direction.angleTo(camera.up)
-  if (angle <= Math.PI+pitchVel && angle >= pitchVel){
-    // if rotating further won't cause the glider to go upside down
-    var axis = direction.clone();
-    axis.cross(camera.up);
-    axis.normalize();
-    direction.applyAxisAngle(axis, pitchVel);
-    vel.applyAxisAngle(axis, pitchVel);
-  }
-}
-
-function updateYaw(){
-  direction.applyAxisAngle(camera.up, yawVel);
-  vel.applyAxisAngle(camera.up, yawVel);
-}
-
-function updateVel(){
-  updatePitch();
-  updateYaw();
-  vel.add(acc);
-}
-
-function updatePos(){
-  pos.add(vel);
-
-}
-
-function updateCamera(){
-  camera.position.set(pos.x, pos.y, pos.z);
-  var look = direction.clone();
-  look.add(pos);
-  camera.lookAt(look);  
 }
 
 main();

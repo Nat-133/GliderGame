@@ -7,8 +7,12 @@ export class City extends THREE.Scene{
     buildSize; // size of buildings in relation to tile size;
 
     buildType;
+
+    buildings;
     
     repr;  // array of strings representing road/building
+
+    skyscraperMaterials;
     
     constructor(size=2000){
         super();
@@ -17,6 +21,9 @@ export class City extends THREE.Scene{
         this.citySize = size;
         this.tileSize = 40;
         this.buildSize = 0.5;
+        
+        this.skyscraperMaterials = [];
+        this.LoadSkyscraperMaterials();
 
         this.repr = [];
         for (let i=0; i<this.size; i++){
@@ -24,11 +31,30 @@ export class City extends THREE.Scene{
         }
         let middle = Math.floor(this.size/2);
         this.CarveRoads(middle, 1, middle, 0);
+        this.buildings = [];
         this.Construct();
+
+
     }
 
     get size(){
         return this.citySize/this.tileSize;
+    }
+
+    LoadSkyscraperMaterials(){
+        let baseFile = "../Resources/skyscrapers/Scraper_";
+        let textureCount = 2;
+        for (let i=1; i<=textureCount; i++){
+            let rep = String(i);
+            let file = baseFile + rep + ".png";
+
+            let sideTexture = new THREE.TextureLoader().load(file);
+            sideTexture.wrapT = THREE.RepeatWrapping;
+            sideTexture.wrapS = THREE.ClampToEdgeWrapping;
+            let sideMaterial = new THREE.MeshPhongMaterial({ map:sideTexture });
+            let materials = [sideMaterial, sideMaterial, sideMaterial, sideMaterial, sideMaterial, sideMaterial];
+            this.skyscraperMaterials.push(materials);
+        }
     }
 
     GetRandom(){
@@ -50,12 +76,12 @@ export class City extends THREE.Scene{
                     let z = ver*this.tileSize-this.citySize/2;
 
                     var buildGeo = new THREE.BoxGeometry(this.buildSize*this.tileSize*0.9, height, this.buildSize*this.tileSize*0.9);
-                    var buildMat = new THREE.MeshPhongMaterial({color: '#aaaa99'});
+                    var buildMat = this.skyscraperMaterials[Math.floor(this.GetRandom() * this.skyscraperMaterials.length)];
                     var buildMesh = new THREE.Mesh(buildGeo, buildMat);
-                    buildMesh.castShadow = false;
-                    buildMesh.receiveShadow = false;
+                    buildMesh.castShadow = true;
+                    buildMesh.receiveShadow = true;
                     buildMesh.position.set(x, height/2, z);
-              
+                    
                     this.add(buildMesh);
                 }
             }
