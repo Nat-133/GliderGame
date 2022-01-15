@@ -21,6 +21,8 @@ export class GliderController {
     glideRatio; // how far the glider falls for each unit travelled horizontally when level
     gravity = new THREE.Vector3(0, -10, 0);
 
+    sound;
+
     constructor(scene){
         this.acc = new THREE.Vector3(0,0,0);
         this.vel = new THREE.Vector3(0,0,0);
@@ -56,7 +58,6 @@ export class GliderController {
             spotlight.position.set(0,0,1);
             this.AddDebugAxes();
         });
-        
     }
 
     AddDebugAxes(){

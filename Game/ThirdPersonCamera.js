@@ -7,11 +7,28 @@ export class ThirdPersonCamera {
     pos ;
     focus;
 
+    sound;
+
     constructor(camera, target){
         this.camera = camera;
         this.target = target;
         this.pos = new THREE.Vector3(0,20,20);
         this.focus = new THREE.Vector3(0,0,0);
+        this.LoadSound();
+    }
+
+    LoadSound(){
+        let listener = new THREE.AudioListener();
+        this.camera.add(listener);
+
+        this.sound = new THREE.Audio(listener);
+        let loader = new THREE.AudioLoader();
+        loader.load('../Resources/sounds/mixkit-winter-wind-loop-1175.wav', ( buffer ) =>{
+            this.sound.setBuffer(buffer);
+            this.sound.setLoop( true );
+            this.sound.setVolume( 0.5 );
+            this.sound.play()
+        });
     }
 
     CalcOptPos(){
@@ -43,9 +60,15 @@ export class ThirdPersonCamera {
         return optFocus;
     }
 
+    CalcOptVolume(){
+        let speed = this.target.vel.length();
+        return speed/100;
+    }
+
     Update(delta){
         var optPos = this.CalcOptPos();
         var optLook = this.CalcOptFocus();
+        var optVolume = this.CalcOptVolume();
 
         var t = 4 * delta;
 
@@ -57,5 +80,7 @@ export class ThirdPersonCamera {
 
         this.camera.position.copy(this.pos);
         this.camera.lookAt(this.focus);
+        this.sound.setVolume(optVolume);
+        console.log(this.sound.listener.getInput());
     }
 }
