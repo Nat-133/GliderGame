@@ -80,7 +80,7 @@ export class ThirdPersonCamera {
 
         this.camera.position.copy(this.pos);
         this.camera.lookAt(this.focus);
+        console.log(optVolume);
         this.sound.setVolume(optVolume);
-        console.log(this.sound.listener.getInput());
     }
 }
